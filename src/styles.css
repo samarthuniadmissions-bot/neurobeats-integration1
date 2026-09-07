@@ -289,6 +289,11 @@ h1, h2, h3, p { margin: 0; }
   font-size: clamp(2rem, 4vw, 3.8rem);
   line-height: 0.96;
 }
+.big-steps > h2 {
+  width: 100%;
+  max-width: none;
+  text-align: center;
+}
 .home-card-grid, .step-grid {
   display: grid;
   gap: 16px;
