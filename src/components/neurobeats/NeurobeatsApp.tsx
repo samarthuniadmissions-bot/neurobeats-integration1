@@ -20,6 +20,7 @@ import {
   Music2,
   Pause,
   Play,
+  Puzzle,
   RefreshCw,
   Search,
   Share2,
@@ -36,6 +37,7 @@ const STORAGE_KEY = 'neurobeats-sessions';
 const USER_KEY = 'neurobeats-user';
 const USERS_KEY = 'neurobeats-users';
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
+const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || '';
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || '';
 const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || '';
 const EMAILJS_ADMIN_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_ADMIN_TEMPLATE_ID || EMAILJS_TEMPLATE_ID;
@@ -67,7 +69,7 @@ const audioProfiles = [
   { id: 'brown-noise', name: 'Brown Noise', label: 'Deep steady noise', tempo: '0 BPM', color: '#83684c' },
   { id: 'lofi', name: 'Lo-fi Pulse', label: 'Warm beat, soft texture', tempo: '72 BPM', color: '#2d8c7f' },
   { id: 'alpha', name: 'Alpha Waves', label: 'Clean 10 Hz shimmer', tempo: '10 Hz', color: '#c49f3f' },
-  { id: 'itunes', name: 'iTunes Music', label: 'Apple/iTunes song preview', tempo: '30 sec', color: '#a5533f' },
+  { id: 'jamendo', name: 'Jamendo Music', label: 'Full-track independent music', tempo: 'Full track', color: '#a5533f' },
   { id: 'silence', name: 'Silence', label: 'Control condition', tempo: '0 BPM', color: '#56616d' },
 ];
 
@@ -75,6 +77,8 @@ const taskTypes = [
   { id: 'math', name: 'Mental Math', icon: Target, prompt: 'Fast accuracy under pressure' },
   { id: 'memory', name: 'Memory Recall', icon: Brain, prompt: 'Recall the previous keyword' },
   { id: 'icons', name: 'Missing Icon Memory', icon: Activity, prompt: 'Spot the hidden symbol' },
+  { id: 'puzzle', name: 'Logic Puzzle', icon: Puzzle, prompt: 'Solve a visual pattern challenge' },
+  { id: 'reaction', name: 'Reaction Timing', icon: TimerReset, prompt: 'Respond quickly when the signal appears' },
 ];
 
 const taskGames = {
@@ -84,16 +88,33 @@ const taskGames = {
     { id: 'math-sequence', name: 'Number patterns', prompt: 'Choose the missing number in each sequence', trials: [{ q: '2, 4, 6, 8, ?', a: '10', mode: 'choice', options: ['10', '12', '14', '16'] }, { q: '5, 10, 15, 20, ?', a: '25', mode: 'choice', options: ['20', '25', '30', '35'] }, { q: '3, 6, 12, 24, ?', a: '48', mode: 'choice', options: ['36', '42', '48', '54'] }, { q: '30, 25, 20, 15, ?', a: '10', mode: 'choice', options: ['5', '10', '12', '15'] }, { q: '1, 4, 9, 16, ?', a: '25', mode: 'choice', options: ['20', '24', '25', '36'] }, { q: '2, 6, 18, 54, ?', a: '162', mode: 'choice', options: ['108', '144', '162', '216'] }] },
   ],
   memory: [
-    { id: 'memory-keywords', name: 'Keyword chain', prompt: 'Recall the previous 4-character keyword', trials: [{ q: 'K7Q2', a: null, intro: true }, { q: 'M4P9', a: 'K7Q2' }, { q: 'A8T3', a: 'M4P9' }, { q: 'R2N6', a: 'A8T3' }, { q: 'L5X1', a: 'R2N6' }, { q: 'C9V4', a: 'L5X1' }] },
-    { id: 'memory-category-sort', name: 'Category Sort Recall', prompt: 'Watch a stream of words, then answer gist questions about what you saw', trials: [] },
+   { id: 'memory-keywords', name: 'Keyword chain', prompt: 'Recall the previous 4-character keyword', trials: [{ q: 'K7Q2', a: null, intro: true }, { q: 'M4P9', a: 'K7Q2' }, { q: 'A8T3', a: 'M4P9' }, { q: 'R2N6', a: 'A8T3' }, { q: 'L5X1', a: 'R2N6' }, { q: 'C9V4', a: 'L5X1' }] },
+   { id: 'memory-category-sort', name: 'Category Sort Recall', prompt: 'Watch a stream of words, then answer gist questions about what you saw', trials: [] },
    { id: 'memory-spatial', name: 'Spatial-Verbal Combo', prompt: 'Watch words appear around the screen, then recall where each one was', trials: [] },
-  ],
- icons: [
+ ],
+  icons: [
     { id: 'icons-missing', name: 'Missing icon', prompt: 'Find the icon hidden from the grid', count: 5 },
     { id: 'icons-color-match', name: 'Icon-Color Matching', prompt: 'Remember which color each icon was paired with', trials: [] },
     { id: 'icons-category-count', name: 'Category Count-in-Grid', prompt: 'View a mixed icon grid, then answer gist questions about what you saw', trials: [] },
+ ],
+  puzzle: [
+    { id: 'logic-patterns', name: 'Logic Patterns', prompt: 'Complete a pattern by spotting the rule', trials: [{ q: 'Which comes next? 2, 4, 8, 16, ?', a: '32', mode: 'choice', options: ['20', '24', '32', '36'] }, { q: 'Which comes next? 1, 3, 6, 10, ?', a: '15', mode: 'choice', options: ['12', '14', '15', '18'] }, { q: 'Which comes next? 81, 27, 9, 3, ?', a: '1', mode: 'choice', options: ['0', '1', '2', '6'] }, { q: 'Which shape has no line of symmetry?', a: 'Scalene triangle', mode: 'choice', options: ['Square', 'Circle', 'Scalene triangle', 'Rectangle'] }] },
+    { id: 'word-scramble', name: 'Word Scramble', prompt: 'Unscramble focus words as quickly as possible', trials: [{ q: 'Unscramble: S U C O F', a: 'FOCUS', mode: 'scramble' }, { q: 'Unscramble: M A L C', a: 'CALM', mode: 'scramble' }, { q: 'Unscramble: W O L F', a: 'FLOW', mode: 'scramble' }, { q: 'Unscramble: M H T Y R', a: 'RHYTHM', mode: 'scramble' }] },
+  ],
+  reaction: [
+    { id: 'reaction-tap', name: 'Signal Tap', prompt: 'Tap the signal as soon as it appears', mode: 'reaction', trials: [{ q: 'Wait for the signal', a: 'tap', mode: 'reaction' }, { q: 'Wait for the signal', a: 'tap', mode: 'reaction' }, { q: 'Wait for the signal', a: 'tap', mode: 'reaction' }, { q: 'Wait for the signal', a: 'tap', mode: 'reaction' }] },
   ],
 };
+
+const allTaskGames = [
+  { ...taskGames.math.find((game) => game.id === 'math-sort'), taskType: 'math' },
+  { ...taskGames.icons.find((game) => game.id === 'icons-missing'), taskType: 'icons' },
+  { ...taskGames.memory.find((game) => game.id === 'memory-keywords'), taskType: 'memory' },
+  { ...taskGames.puzzle[0], taskType: 'puzzle' },
+  { ...taskGames.reaction[0], taskType: 'reaction' },
+  { id: 'color-response', name: 'Color Response', prompt: 'Tap the color that matches the word, not its position', taskType: 'icons', mode: 'color-response', trials: [{ q: 'Choose the color BLUE', a: 'blue', mode: 'color-response' }, { q: 'Choose the color ORANGE', a: 'orange', mode: 'color-response' }, { q: 'Choose the color GREEN', a: 'green', mode: 'color-response' }, { q: 'Choose the color PURPLE', a: 'purple', mode: 'color-response' }] },
+  { id: 'sequence-tap', name: 'Sequence Tap', prompt: 'Tap numbers in the displayed order without mistakes', taskType: 'memory', mode: 'sequence-tap', trials: [{ q: 'Tap 2, 4, 1, 3', a: 'correct', mode: 'sequence-tap', sequence: ['2', '4', '1', '3'] }, { q: 'Tap 3, 1, 4, 2', a: 'correct', mode: 'sequence-tap', sequence: ['3', '1', '4', '2'] }, { q: 'Tap 1, 4, 2, 3', a: 'correct', mode: 'sequence-tap', sequence: ['1', '4', '2', '3'] }] },
+];
 
 const roleOptions = ['Student', 'Teacher', 'Employee', 'Creator', 'Other'];
 const genreOptions = ['Pop', 'Hip-Hop', 'Rock', 'Classical', 'Jazz', 'Electronic', 'Ambient', 'Lo-fi'];
@@ -126,6 +147,8 @@ const sharedQuestions = [
   ['lyrics', 'Do lyrics distract you?', ['No lyrics', 'Soft vocals are fine', 'Lyrics are okay']],
   ['sound', 'Which sound texture feels best?', ['Warm beats', 'Clean piano', 'Cinematic focus']],
 ];
+
+const primaryMoodQuestion = ['mood', 'What should your music feel like right now?', ['Calm and clear', 'Balanced and steady', 'Energizing and upbeat']];
 
 const baseTrials = {
   math: [
@@ -200,7 +223,7 @@ function loadStoredFlag(key) {
 }
 
 function defaultAnswers(role) {
-  return Object.fromEntries([...roleQuestions[role], ...sharedQuestions].map(([id, , options]) => [id, options[0]]));
+  return Object.fromEntries([...roleQuestions[role], ...sharedQuestions, primaryMoodQuestion].map(([id, , options]) => [id, options[0]]));
 }
 
 function parseArtistPreference(value) {
@@ -228,6 +251,10 @@ function fallbackMusicOptions(role, answers, artistPreference, genres, languageP
     { title: 'Personal Focus Match', searchTerm: `${base} instrumental`, reason: 'Matches your role, work mode, and optional artist or genre preferences.' },
     { title: 'Low Distraction Flow', searchTerm: `${base} calm ambient`, reason: 'Prioritizes steady attention with fewer distracting changes.' },
     { title: 'Momentum Track', searchTerm: `${base} upbeat focus`, reason: 'Adds energy while staying aligned with your selected preferences.' },
+    { title: 'Piano Clarity', searchTerm: `${base} soft piano minimal`, reason: 'Uses a sparse piano texture for reading, planning, or careful work.' },
+    { title: 'Cinematic Depth', searchTerm: `${base} cinematic orchestral focus`, reason: 'Adds a spacious soundtrack feel for creative or long-form tasks.' },
+    { title: 'Acoustic Steady', searchTerm: `${base} gentle acoustic rhythm`, reason: 'Offers a warm, organic pulse without an intense electronic texture.' },
+    { title: 'Night Ambient', searchTerm: `${base} nocturnal atmospheric downtempo`, reason: 'Creates a softer late-session atmosphere for calm, sustained focus.' },
   ];
 }
 
@@ -238,13 +265,13 @@ function parseMusicOptions(value, fallback) {
     if (!Array.isArray(parsed)) return fallback;
     const valid = parsed
       .filter((option) => option?.title && option?.searchTerm && option?.reason)
-      .slice(0, 4)
+      .slice(0, 7)
       .map((option) => ({
         title: String(option.title).trim(),
         searchTerm: String(option.searchTerm).trim(),
         reason: String(option.reason).trim(),
       }));
-    return valid.length >= 3 ? valid : fallback;
+    return valid.length >= 7 ? valid : fallback;
   } catch {
     return fallback;
   }
@@ -256,10 +283,10 @@ function ensureMusicOptionDiversity(options, { role, answers, artistPreference, 
     ...genres,
     languagePreference !== 'Any' ? languagePreference : '',
     ...Object.values(answers),
-    taskType === 'memory' ? 'memory recall' : taskType === 'icons' ? 'visual memory' : 'mental math',
+    taskType === 'memory' ? 'memory recall' : taskType === 'icons' ? 'visual memory' : taskType === 'puzzle' ? 'logic puzzles' : 'mental math',
     role,
   ].filter(Boolean).join(' ');
-  const variations = ['quiet instrumental piano', 'lofi ambient low distraction', 'gentle acoustic steady rhythm', 'cinematic focus soundtrack'];
+  const variations = ['quiet instrumental piano', 'lofi ambient low distraction', 'gentle acoustic steady rhythm', 'cinematic focus soundtrack', 'minimal classical piano', 'warm downtempo electronica', 'nocturnal atmospheric focus'];
   const genericQuery = /^(any|english|hindi|bengali|tamil|telugu|punjabi|korean|japanese|spanish|french|arabic)?\s*(focus|study|studying)?\s*(music|songs?)?$/i;
   const seen = new Set();
   return options.map((option, index) => {
@@ -277,7 +304,7 @@ function ensureMusicOptionDiversity(options, { role, answers, artistPreference, 
 async function generateGroqMusicOptions({ role, answers, artistPreference, genres, languagePreference, taskType, preMood, previousSessions }) {
   const fallback = fallbackMusicOptions(role, answers, artistPreference, genres, languagePreference);
   const response = await callGroq([
-    { role: 'system', content: 'You are Neurobeats music personalization AI. Create 3 or 4 genuinely different recommendations for this specific person and session. Reason from every supplied preference: role, exact answers, task, mood, genre, language, artist, and previous session patterns. Each searchTerm must be a concise, relevant music query containing concrete style terms, not generic filler. Make the options meaningfully different: one closest match, one lower-distraction alternative, one energy or mood adjustment, and one artist or regional variation when possible. Do not use generic phrases such as English Focus Music unless explicitly requested. Return JSON only as an array of objects with exactly: title, searchTerm, reason.' },
+    { role: 'system', content: 'You are Neurobeats music personalization AI. Create at least 7 genuinely different recommendations for this specific person and session. Reason from every supplied preference: role, exact answers, task, mood, genre, language, artist, and previous session patterns. Each searchTerm must be a concise, relevant music query containing concrete style terms, not generic filler. Make the options meaningfully different: include a closest match, lower-distraction alternative, energy adjustment, instrumental texture, artist or regional variation, and different genre or tempo directions when possible. Do not use generic phrases such as English Focus Music unless explicitly requested. Return JSON only as an array of objects with exactly: title, searchTerm, reason.' },
     { role: 'user', content: JSON.stringify({ role, answers, artistPreference, genres, languagePreference, taskType, preMood, previousSessions: previousSessions.slice(0, 5).map((session) => ({ taskName: session.taskName, soundUsed: session.soundUsed, accuracy: session.accuracy, postMood: session.postMood, genres: session.genres, languagePreference: session.languagePreference })) }) },
   ], JSON.stringify(fallback));
   return ensureMusicOptionDiversity(parseMusicOptions(response, fallback), { role, answers, artistPreference, genres, languagePreference, taskType, preMood });
@@ -328,7 +355,7 @@ async function extractMusicSearchTerm(prompt, fallbackTerm, languagePreference =
   if (shortKeyword) return cleanPrompt;
   const fallback = buildFallbackMusicKeywords(cleanPrompt, languagePreference) || fallbackTerm;
   const extracted = await callGroq([
-    { role: 'system', content: 'Extract an iTunes music search query from the user request. Return only 3 to 8 keywords, artist names, genres, moods, and language or regional music terms. Do not include explanations, punctuation-heavy text, or full sentences.' },
+    { role: 'system', content: 'Extract a Jamendo music search query from the user request. Return only 3 to 8 keywords, artist names, genres, moods, and language or regional music terms. Do not include explanations, punctuation-heavy text, or full sentences.' },
     { role: 'user', content: JSON.stringify({ prompt: cleanPrompt, languagePreference }) },
   ], fallback);
   return extracted.replace(/["`]/g, '').replace(/\s+/g, ' ').trim().split(/\s+/).slice(0, 8).join(' ') || fallback;
@@ -337,7 +364,7 @@ async function extractMusicSearchTerm(prompt, fallbackTerm, languagePreference =
 function getTimeAdjustedPercent(taskType, correct, total, elapsed, gameVariant = '') {
   if (!total) return 0;
   const rawPercent = (correct / total) * 100;
-  const targetSeconds = gameVariant === 'math-sort' ? 3.5 : { math: 6, memory: 5, icons: 7 }[taskType];
+  const targetSeconds = gameVariant === 'math-sort' ? 3.5 : { math: 6, memory: 5, icons: 7, puzzle: 8, reaction: 3 }[taskType];
   return Math.max(0, Math.round(rawPercent - Math.max(0, elapsed / total - targetSeconds) * 3.5));
 }
 
@@ -583,7 +610,8 @@ function createTrials(taskType, gameId) {
   const game = taskGames[taskType]?.find((item) => item.id === gameId) || taskGames[taskType]?.[0];
   if (taskType === 'icons' && game?.id === 'icons-color-match') return generateIconColorTrials();
   if (taskType === 'icons' && game?.id === 'icons-category-count') return generateIconCategoryGridTrials();
-  if (taskType === 'icons') return generateIconTrials(game?.count || 5, 'missing');
+  if (taskType === 'icons' && game?.id === 'color-response') return game.trials;
+  if (taskType === 'icons') return generateIconTrials(game?.count || 5, game?.mode || 'missing');
   if (taskType === 'memory' && game?.id === 'memory-category-sort') return generateCategoryStreamTrials();
   if (taskType === 'memory' && game?.id === 'memory-spatial') return generateSpatialTrials();
   return game?.trials || baseTrials[taskType];
@@ -686,15 +714,27 @@ function buildFeedbackSearchFallback(feedback, session) {
   return [feedbackTerm, genreTerm, languageTerm, scoreBand, 'balanced focus music variety'].filter(Boolean).join(' ');
 }
 
-async function fetchItunesSongs(term, { excludeTrackIds = [], avoidArtist = '', offset = 0 } = {}) {
-  const response = await fetch(`https://itunes.apple.com/search?${new URLSearchParams({ term, media: 'music', entity: 'song', limit: '24', offset: String(offset) })}`);
+async function fetchJamendoSongs(term, { excludeTrackIds = [], avoidArtist = '', offset = 0 } = {}) {
+  if (!JAMENDO_CLIENT_ID) return [];
+  const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?${new URLSearchParams({ client_id: JAMENDO_CLIENT_ID, format: 'json', search: term, type: 'single albumtrack', audioformat: 'mp32', imagesize: '300', include: 'musicinfo', limit: '24', offset: String(offset) })}`);
   const data = await response.json();
   const blocked = new Set(excludeTrackIds.map(String));
   const blockedArtist = avoidArtist.toLowerCase();
   return (data.results || [])
-    .filter((song) => song.previewUrl)
-    .filter((song) => !blocked.has(String(song.trackId)))
-    .filter((song) => !blockedArtist || song.artistName.toLowerCase() !== blockedArtist)
+    .filter((song) => song.audio)
+    .filter((song) => !blocked.has(String(song.id)))
+    .filter((song) => !blockedArtist || song.artist_name.toLowerCase() !== blockedArtist)
+    .map((song) => ({
+      trackId: `jamendo-${song.id}`,
+      trackName: song.name,
+      artistName: song.artist_name,
+      artworkUrl100: song.album_image || song.image,
+      previewUrl: song.audio,
+      duration: song.duration,
+      shareUrl: song.shareurl,
+      licenseUrl: song.license_ccurl,
+      source: 'jamendo',
+    }))
     .slice(0, 12);
 }
 
@@ -704,7 +744,7 @@ async function callGroq(messages, fallback) {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, temperature: 0.65 }),
+      body: JSON.stringify({ model: 'openai/gpt-oss-120b', messages, temperature: 0.65, max_tokens: 2048 }),
     });
     const data = await response.json();
     return data.choices?.[0]?.message?.content || fallback;
@@ -858,10 +898,17 @@ useEffect(() => {
     setArtistStatus('loading');
     const timeout = window.setTimeout(async () => {
       try {
-        const response = await fetch(`https://itunes.apple.com/search?${new URLSearchParams({ term: artist, media: 'music', entity: 'musicArtist', limit: '6' })}`);
+        const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?${new URLSearchParams({ client_id: JAMENDO_CLIENT_ID, format: 'json', search: artist, include: 'musicinfo', limit: '12' })}`);
         const data = await response.json();
-        setArtistSuggestions(data.results || []);
-        setArtistStatus(data.results?.length ? 'ready' : 'empty');
+        const seen = new Set();
+        const suggestions = (data.results || []).filter((song) => {
+          const name = song.artist_name?.trim();
+          if (!name || seen.has(name.toLowerCase())) return false;
+          seen.add(name.toLowerCase());
+          return true;
+        }).map((song) => ({ artistId: `jamendo-artist-${song.artist_name.toLowerCase()}`, artistName: song.artist_name }));
+        setArtistSuggestions(suggestions);
+        setArtistStatus(suggestions.length ? 'ready' : 'empty');
       } catch {
         setArtistSuggestions([]);
         setArtistStatus('error');
@@ -871,7 +918,7 @@ useEffect(() => {
   }, [artistPreference, isGameActive]);
 
   useEffect(() => {
-    if (profileId === 'itunes') {
+    if (profileId === 'jamendo') {
       stopSynthAudio();
       if (audioOn && selectedSong?.previewUrl) songAudioRef.current?.play().catch(() => setAudioOn(false));
       else songAudioRef.current?.pause();
@@ -1002,13 +1049,13 @@ useEffect(() => {
       let results = [];
       let usedQuery = aiQuery;
       for (const term of searchTerms) {
-        results = await fetchItunesSongs(term);
+        results = await fetchJamendoSongs(term);
         usedQuery = term;
         if (results.length) break;
       }
       setSongs(results);
       setSelectedSong(results[0] || null);
-      setProfileId('itunes');
+      setProfileId('jamendo');
       setSongQuery(directQuery ? originalQuery : usedQuery);
       setSongStatus(results.length ? 'ready' : 'empty');
     } catch {
@@ -1133,7 +1180,7 @@ useEffect(() => {
     const fallbackQuery = buildFeedbackSearchFallback(feedback, latestSession);
     try {
       const aiQuery = await callGroq([
-        { role: 'system', content: 'Create a specific, varied iTunes music search query from the user feedback. Extract concrete preferences such as tempo, instruments, mood, energy, genre, language, and listening context from the feedback. Use the score and post-session mood as context. If disliked, move away from the current sound and artist. If liked, keep the useful qualities but introduce a different artist or subgenre. Never return a generic query like calm focus music. Return only 4 to 9 search keywords.' },
+        { role: 'system', content: 'Create a specific, varied Jamendo music search query from the user feedback. Extract concrete preferences such as tempo, instruments, mood, energy, genre, language, and listening context from the feedback. Use the score and post-session mood as context. If disliked, move away from the current sound and artist. If liked, keep the useful qualities but introduce a different artist or subgenre. Never return a generic query like calm focus music. Return only 4 to 9 search keywords.' },
         { role: 'user', content: JSON.stringify({ feedback, feedbackKeywords, sentiment, score: latestSession.accuracy, task: latestSession.taskName, moodAfter: latestSession.postMood, soundUsed: latestSession.soundUsed, genres: latestSession.genres, languagePreference: latestSession.languagePreference }) },
       ], fallbackQuery);
       const cleanedQuery = aiQuery.replace(/["`]/g, '').replace(/\s+/g, ' ').trim() || fallbackQuery;
@@ -1146,12 +1193,12 @@ useEffect(() => {
       let freshSongs = [];
       let usedFeedbackQuery = cleanedQuery;
       for (const [index, term] of searchTerms.entries()) {
-        freshSongs = await fetchItunesSongs(term, { excludeTrackIds: alreadySeenIds, avoidArtist, offset: index * 12 });
+        freshSongs = await fetchJamendoSongs(term, { excludeTrackIds: alreadySeenIds, avoidArtist, offset: index * 12 });
         usedFeedbackQuery = term;
         if (freshSongs.length) break;
       }
       const fallback = sentiment === 'liked'
-        ? `You scored ${latestSession.accuracy}/100 and liked the sound, so I found similar tracks with some variety. Fresh iTunes search: ${usedFeedbackQuery}.`
+        ? `You scored ${latestSession.accuracy}/100 and liked the sound, so I found similar tracks with some variety. Fresh Jamendo search: ${usedFeedbackQuery}.`
         : sentiment === 'disliked'
           ? `You scored ${latestSession.accuracy}/100 and did not enjoy the sound, so I avoided that track/artist and searched for a calmer alternative: ${usedFeedbackQuery}.`
           : `Your feedback was mixed, so I balanced your ${latestSession.accuracy}/100 score with a fresh focus search: ${usedFeedbackQuery}.`;
@@ -1165,7 +1212,7 @@ useEffect(() => {
       if (freshSongs.length) {
         setSongs(freshSongs);
         setSelectedSong(freshSongs[0]);
-        setProfileId('itunes');
+        setProfileId('jamendo');
         setSongQuery(usedFeedbackQuery);
         setSongStatus('ready');
       } else {
@@ -1461,9 +1508,8 @@ function LiveNowPlaying() {
         <em>{mm}:{ss}</em>
       </div>
       <div className="vinyl-3d" aria-hidden="true">
-        <div className="vinyl-3d-disc">
-          <span className="vinyl-3d-label"><Music2 size={26} /></span>
-        </div>
+        <div className="vinyl-3d-disc" />
+        <span className="vinyl-3d-label"><Music2 size={26} /></span>
         <div className="vinyl-3d-shadow" />
       </div>
       <strong key={index} className="now-playing-title">{moods[index]}</strong>
@@ -1494,15 +1540,25 @@ function HomePage({ navigate }) {
       <div className="hero-copy">
         <span className="eyebrow"><Music2 size={18} /> Simple focus music</span>
         <h1>Press play. Focus better.</h1>
-        <p>Pick a sound, do one short task, see how you did. It takes about 2 minutes.</p>
+        <p>Choose a sound that feels right, try one small task, and learn what supports you today. There is no perfect way to begin.</p>
         <div className="hero-actions">
           <button className="primary-action big-cta" onClick={() => navigate('focus')}><Play size={22} /> Start now</button>
           <button className="secondary-action" onClick={() => navigate('how')}>How it works <ChevronRight size={18} /></button>
         </div>
-        <p className="hero-note">No setup needed. Works on phone or computer.</p>
+        <p className="hero-note">Take it at your pace. Works on phone or computer.</p>
       </div>
       <div className="landing-panel">
         <LiveNowPlaying />
+      </div>
+      <div className="home-flow-guide" aria-label="How to start a focus session">
+        <div className="home-flow-heading"><span className="eyebrow"><Sparkles size={15} /> Your focus path</span><strong>From mood to music in three simple moves</strong></div>
+        <div className="home-flow-items">
+          <button onClick={() => navigate('focus')}><span>01</span><Activity size={18} /><strong>Set your mood</strong><small>Tell us how you feel</small></button>
+          <ChevronRight className="home-flow-arrow" size={18} />
+          <button onClick={() => navigate('focus')}><span>02</span><SlidersHorizontal size={18} /><strong>Shape your sound</strong><small>Choose a personal fit</small></button>
+          <ChevronRight className="home-flow-arrow" size={18} />
+          <button onClick={() => navigate('focus')}><span>03</span><Play size={18} /><strong>Press play</strong><small>Listen and begin</small></button>
+        </div>
       </div>
       <div className="landing-band live-band">
         <div className="metric"><span>Sessions played</span><LiveCount to={12480} /></div>
@@ -1510,25 +1566,25 @@ function HomePage({ navigate }) {
         <div className="metric"><span>People focusing now</span><LiveCount to={143} /></div>
       </div>
       <div className="home-section big-steps">
-        <h2>Just 3 easy steps</h2>
+        <h2>How It Works</h2>
         <div className="home-card-grid">
           <article className="capability-audio">
             <span className="step-bubble">1</span>
             <Headphones size={40} />
-            <h3>Choose a sound</h3>
-            <p>Tap what fits your mood. We pick the music for you.</p>
+            <h3>Choose Your Sound</h3>
+            <p>Tell us how you feel and what you need to do. Neurobeats suggests music that fits your mood and focus goal.</p>
           </article>
           <article className="capability-test">
             <span className="step-bubble">2</span>
             <Target size={40} />
-            <h3>Do one short task</h3>
-            <p>A quick, easy task while your music plays.</p>
+            <h3>Complete A Focus Task</h3>
+            <p>Listen while you complete a short memory, math, reaction, or visual challenge. Your accuracy and time are recorded.</p>
           </article>
           <article className="capability-ai">
             <span className="step-bubble">3</span>
             <WandSparkles size={40} />
-            <h3>See your result</h3>
-            <p>A simple score and a note about what helped.</p>
+            <h3>Review Your Insight</h3>
+            <p>After the session, see your score, mood, sound, and AI insight so you can understand what helped you focus.</p>
           </article>
         </div>
         <button className="primary-action big-cta wide-cta" onClick={() => navigate('focus')}><Play size={22} /> Try it — takes 2 minutes</button>
@@ -1536,7 +1592,18 @@ function HomePage({ navigate }) {
       <div className="home-section about-strip">
         <AboutStory />
       </div>
-      <div className="testimonial"><span>“Focus feels calmer when I can hear what works.”</span> “Neurobeats helped me notice that softer music helps me settle into hard tasks without forcing it.”</div>
+      <section className="testimonial testimonial-showcase" aria-labelledby="testimonial-title">
+        <div className="testimonial-intro">
+          <span className="eyebrow"><Sparkles size={15} /> Real focus, real feedback</span>
+          <h2 id="testimonial-title">Small sessions. Useful discoveries.</h2>
+          <p>Neurobeats helps people notice the sounds and routines that make focusing feel easier.</p>
+        </div>
+        <div className="testimonial-grid">
+          <article className="testimonial-card"><div className="testimonial-card-top"><strong>5/5</strong><span>Student</span></div><blockquote>"The memory test was quick, but it showed me that calm beats help me stay with revision longer."</blockquote><small>Riya, exam preparation</small></article>
+          <article className="testimonial-card"><div className="testimonial-card-top"><strong>4.8/5</strong><span>Employee</span></div><blockquote>"I stopped guessing which playlist would help. The session score made the choice feel personal."</blockquote><small>Arjun, deep work session</small></article>
+          <article className="testimonial-card"><div className="testimonial-card-top"><strong>5/5</strong><span>Creator</span></div><blockquote>"The AI insight connected my mood with my performance in a way I could actually use next time."</blockquote><small>Maya, writing session</small></article>
+        </div>
+      </section>
     </section>
   );
 }
@@ -1555,8 +1622,8 @@ const featureDetails = [
   {
     title: 'AI Music Recommendations',
     summary: 'Find sound that fits your mood, role, task, and listening preferences.',
-    detail: 'Answer a few optional questions or describe what you need in your own words. Groq identifies useful moods, genres, artists, languages, and search terms, then iTunes returns fresh track recommendations with playback controls.',
-    points: ['Natural-language music prompts', 'Optional artist, genre, and language filters', 'Fresh iTunes results with audio playback'],
+    detail: 'Answer a few optional questions or describe what you need in your own words. Groq identifies useful moods, genres, artists, languages, and search terms, then Jamendo returns fresh full-track recommendations with playback controls.',
+    points: ['Natural-language music prompts', 'Optional artist, genre, and language filters', 'Fresh Jamendo results with full-track playback'],
     icon: Headphones,
   },
   {
@@ -1649,7 +1716,7 @@ const workflowSteps = [
   {
     title: 'Get AI Music Recommendations',
     summary: 'AI suggests music based on your answers and natural-language prompts.',
-    detail: 'Groq extracts useful moods, genres, artist hints, and keywords, then the app searches iTunes for fresh music recommendations.',
+    detail: 'Groq extracts useful moods, genres, artist hints, and keywords, then the app searches Jamendo for fresh music recommendations.',
     icon: WandSparkles,
   },
   {
@@ -1775,7 +1842,7 @@ function PrivacyPolicyPage() {
         </article>
         <article>
           <h2>4. Third-Party Services</h2>
-          <p>EmailJS may receive registration or login event details when configured. Groq may receive session details and feedback to create insights and recommendations. The iTunes API receives music search terms to return song previews.</p>
+          <p>EmailJS may receive registration or login event details when configured. Groq may receive session details and feedback to create insights and recommendations. The Jamendo API receives music search terms to return independent music streams.</p>
         </article>
         <article>
           <h2>5. AI Insights And Feedback</h2>
@@ -1822,8 +1889,8 @@ function TermsPage() {
           <p>AI insights and music recommendations are generated from your session data and feedback. They are suggestions only and may not always be accurate, complete, or suitable for every person.</p>
         </article>
         <article>
-          <h2>5. Music And iTunes Previews</h2>
-          <p>Music results are provided through the iTunes API. Neurobeats does not own the songs, artwork, artist names, previews, or external music metadata returned by iTunes.</p>
+          <h2>5. Music And Jamendo Tracks</h2>
+          <p>Music results are provided through the Jamendo API. Neurobeats does not own the songs, artwork, artist names, streams, licenses, or external music metadata returned by Jamendo.</p>
         </article>
         <article>
           <h2>6. User Feedback</h2>
@@ -1906,29 +1973,44 @@ function FocusPage(props) {
         <div className="hero-copy">
           <span className="eyebrow"><Headphones size={16} /> Focus Test</span>
           <h1>Test your sound</h1>
-          <p>Choose music, complete a timed task, rate your mood, and generate a shareable AI Insight after the session.</p>
+          <p>Take one small step toward focus. Choose music, try a short task, and notice what helps you feel more settled.</p>
         </div>
         <FocusSignal profile={props.selectedProfile} audioOn={props.audioOn} song={props.selectedSong} />
       </section>
 
+      <div className="focus-comfort-note" role="note">
+        <Activity size={20} />
+        <div><strong>Be kind to yourself today.</strong><p>There are no bad results. Your session is simply a snapshot of how you are feeling right now.</p></div>
+      </div>
+
+      <nav className="focus-journey" aria-label="Focus session steps">
+        <span className="focus-journey-label">Your path</span>
+        {[['focus-task-step', '1', 'Task'], ['focus-mood-step', '2', 'Mood'], ['focus-sound-step', '3', 'Sound'], ['focus-run-step', '4', 'Listen and play']].map(([id, number, label], index) => (
+          <React.Fragment key={id}>
+            {index ? <ChevronRight size={15} /> : null}
+            <a href={`#${id}`}><span>{number}</span>{label}</a>
+          </React.Fragment>
+        ))}
+      </nav>
+
       <div className="focus-steps">
-        <FocusStepCard step="1" title="Pick your task" subtitle="Choose a category and a game mode" icon={Target}>
+        <FocusStepCard id="focus-task-step" step="1" title="Pick your task" subtitle="Choose a category and a game mode" icon={Target}>
           <TaskSelector {...props} />
         </FocusStepCard>
 
-        <FocusStepCard step="2" title="Set your mood" subtitle="Helps Groq personalize your music" icon={Activity}>
+        <FocusStepCard id="focus-mood-step" step="2" title="Set your mood" subtitle="Helps Groq personalize your music" icon={Activity}>
           <div className="mood-step">
             <MoodSlider label="Before" value={props.preMood} onChange={props.setPreMood} />
             {props.phase !== 'setup' ? <MoodSlider label="After" value={props.postMood} onChange={props.setPostMood} /> : null}
           </div>
         </FocusStepCard>
 
-        <FocusStepCard step="3" title="Choose your sound" subtitle="AI-personalized music, or pick a focus tone" icon={Headphones}>
+        <FocusStepCard id="focus-sound-step" step="3" title="Choose your sound" subtitle="AI-personalized music, or pick a focus tone" icon={Headphones}>
           <MusicPanel {...props} />
         </FocusStepCard>
       </div>
 
-      <FocusStepCard step="4" title="Run the test" subtitle="Sign in required — sound locks while the timer runs" icon={Clock3}>
+      <FocusStepCard id="focus-run-step" step="4" title="Run the test" subtitle="Sign in required — sound locks while the timer runs" icon={Clock3}>
         <TaskPanel {...props} />
       </FocusStepCard>
 
@@ -1937,9 +2019,9 @@ function FocusPage(props) {
   );
 }
 
-function FocusStepCard({ step, title, subtitle, icon: Icon, children }) {
+function FocusStepCard({ id, step, title, subtitle, icon: Icon, children }) {
   return (
-    <section className="focus-step-card">
+    <section id={id} className="focus-step-card">
       <header className="focus-step-header">
         <span className="focus-step-number">{step}</span>
         <div className="focus-step-icon"><Icon size={20} /></div>
@@ -1953,18 +2035,14 @@ function FocusStepCard({ step, title, subtitle, icon: Icon, children }) {
   );
 }
 function TaskSelector({ taskType, setTaskType, gameVariant, setGameVariant, isGameActive }) {
-  const availableGames = taskGames[taskType] || [];
-  return <div className="task-selector"><div className="segmented">{taskTypes.map((task) => {
-    const Icon = task.icon;
-    return <button key={task.id} className={taskType === task.id ? 'active' : ''} onClick={() => { setTaskType(task.id); setGameVariant(taskGames[task.id]?.[0]?.id); }} disabled={isGameActive}><Icon size={17} /><span>{task.name}</span></button>;
-  })}</div><div className="game-choices"><strong>Choose a game</strong><div>{availableGames.map((game) => <button key={game.id} className={gameVariant === game.id ? 'selected' : ''} onClick={() => setGameVariant(game.id)} disabled={isGameActive}><span>{game.name}</span><small>{game.prompt}</small></button>)}</div></div></div>;
+  return <div className="task-selector"><div className="game-choices direct-game-library"><strong>Choose a game</strong><small className="game-library-hint">Pick the challenge that matches the kind of focus you want to practise.</small><div>{allTaskGames.map((game) => <button key={game.id} className={taskType === game.taskType && gameVariant === game.id ? 'selected' : ''} onClick={() => { setTaskType(game.taskType); setGameVariant(game.id); }} disabled={isGameActive}><span>{game.name}</span><small>{game.prompt}</small></button>)}</div></div></div>;
 }
 
 function MusicPanel(props) {
   const [roleSearch, setRoleSearch] = useState(props.role);
   const [showRoleSuggestions, setShowRoleSuggestions] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const visibleQuestions = [...(roleQuestions[props.role] || roleQuestions.Other), ...sharedQuestions];
+  const optionalQuestions = [...(roleQuestions[props.role] || roleQuestions.Other), ...sharedQuestions];
   const roleSuggestions = roleSearch.trim()
     ? roleOptions.filter((role) => role.toLowerCase().includes(roleSearch.trim().toLowerCase()))
     : roleOptions;
@@ -1981,7 +2059,7 @@ function MusicPanel(props) {
     if (props.isGameActive) return;
     const same = props.selectedSong?.trackId === song.trackId;
     props.setSelectedSong(song);
-    props.setProfileId('itunes');
+    props.setProfileId('jamendo');
     props.setAudioOn(same ? !props.audioOn : true);
   }
 
@@ -1991,7 +2069,7 @@ function MusicPanel(props) {
 
       <div className="music-subsection">
         <h3 className="music-subsection-title">Who's this session for?</h3>
-        <p className="music-subsection-hint">Groq tailors the questions and music to this role.</p>
+        <p className="music-subsection-hint">This only helps shape the suggestions. Choose the closest fit, or type your own.</p>
         <div className="role-input-wrap">
           <input
             value={roleSearch}
@@ -2013,13 +2091,25 @@ function MusicPanel(props) {
       </div>
 
       <div className="music-subsection">
+        <h3 className="music-subsection-title">Choose your focus mood</h3>
+        <p className="music-subsection-hint">One simple choice is enough. There is no right answer.</p>
+        <div className="quiz-question primary-music-question">
+          <div className="choice-row">
+            {primaryMoodQuestion[2].map((option) => (
+              <button key={option} className={props.quizAnswers.mood === option ? 'selected' : ''} onClick={() => props.setQuizAnswers({ ...props.quizAnswers, mood: option })} disabled={props.isGameActive}>{option}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="music-subsection">
         <button className={`advanced-toggle ${showAdvanced ? 'open' : ''}`} type="button" onClick={() => setShowAdvanced((value) => !value)} disabled={props.isGameActive}>
           <span><SlidersHorizontal size={17} /> More personalization <small>optional</small></span>
           <ChevronRight size={17} />
         </button>
         {showAdvanced ? (
           <div className="advanced-personalization">
-            {visibleQuestions.map(([id, question, options]) => (
+            {optionalQuestions.map(([id, question, options]) => (
               <div className="quiz-question" key={id}>
                 <strong>{question}</strong>
                 <div className="choice-row">
@@ -2030,6 +2120,7 @@ function MusicPanel(props) {
               </div>
             ))}
 
+            {/* Temporarily hidden: restore this block when preferred-artist personalization is needed.
             <label className="artist-field">
               <strong>Preferred artist <span>optional</span></strong>
               <div className="artist-autocomplete">
@@ -2044,6 +2135,7 @@ function MusicPanel(props) {
                 ) : null}
               </div>
             </label>
+            */}
 
             <div className="genre-field">
               <strong>Preferred genres <span>optional</span></strong>
@@ -2081,14 +2173,14 @@ function MusicPanel(props) {
       </div>
 
       <div className="music-subsection">
-        <h3 className="music-subsection-title">Search iTunes</h3>
+        <h3 className="music-subsection-title">Search Jamendo music</h3>
         <div className="itunes-search">
           <div className="search-line">
             <Search size={18} />
             <input value={props.songQuery} onChange={(event) => props.setSongQuery(event.target.value)} placeholder={props.suggestedQuery} disabled={props.isGameActive} />
             <button onClick={() => props.searchSongs(props.songQuery || props.suggestedQuery)} disabled={props.isGameActive}>Find</button>
           </div>
-          <small>{props.songStatus === 'loading' ? 'AI is extracting music keywords and searching iTunes...' : props.songStatus === 'ready' ? `Searched iTunes for: ${props.songQuery}` : `Suggested search: ${props.suggestedQuery}`}</small>
+          <small>{props.songStatus === 'loading' ? 'AI is extracting music keywords and searching Jamendo...' : props.songStatus === 'ready' ? `Searched Jamendo for: ${props.songQuery}` : `Suggested search: ${props.suggestedQuery}`}</small>
         </div>
       </div>
 
@@ -2111,7 +2203,7 @@ function MusicPanel(props) {
             {props.songs.map((song) => (
               <article key={song.trackId} className={`song-card ${props.selectedSong?.trackId === song.trackId ? 'selected' : ''}`}>
                 <img src={song.artworkUrl100} alt="" />
-                <button className="song-select" onClick={() => { props.setSelectedSong(song); props.setProfileId('itunes'); }} disabled={props.isGameActive}>
+                <button className="song-select" onClick={() => { props.setSelectedSong(song); props.setProfileId('jamendo'); }} disabled={props.isGameActive}>
                   <span>{song.trackName}</span>
                   <small>{song.artistName}</small>
                 </button>
@@ -2136,7 +2228,7 @@ function SongTimeline({ selectedSong, audioOn, setAudioOn, audioCurrentTime, aud
     <div className="song-timeline">
       <div className="timeline-title">
         <strong>{selectedSong.trackName}</strong>
-        <span>iTunes preview clip</span>
+        <span>Full Jamendo track</span>
       </div>
       <button className="song-play large" onClick={() => setAudioOn(!audioOn)} disabled={isGameActive}>
         {audioOn ? <Pause size={17} /> : <Play size={17} />}
@@ -2160,7 +2252,7 @@ function TaskPanel(props) {
   const trial = props.trials[props.trialIndex];
   return (
     <div className="task-panel">
-      <div className="section-heading"><Clock3 size={22} /><div><h2>Timed Focus Task</h2><p>{props.phase === 'testing' ? 'Answer quickly and accurately.' : 'Configure your audio and begin when ready.'}</p></div></div>
+      <div className="section-heading"><Clock3 size={22} /><div><h2>Timed Focus Task</h2><p>{props.phase === 'testing' ? 'Stay with the task. Do your best, one prompt at a time.' : 'Set up a small, manageable session and begin when you feel ready.'}</p></div></div>
       {props.phase === 'setup' ? <EmptyTask {...props} /> : null}
     {props.phase === 'testing' && props.taskType === 'icons' && props.gameVariant !== 'icons-color-match' && props.gameVariant !== 'icons-category-count' ? (
         <div className="test-card icon-test-card">
@@ -2192,6 +2284,10 @@ function TaskPanel(props) {
   </div>
 ) : null}
       {props.phase === 'testing' && props.taskType === 'math' && props.gameVariant === 'math-sort' ? <div className="test-card speed-sort-card"><div className="test-meta"><span><TimerReset size={16} /> {props.elapsed}s</span><span>{props.trialIndex + 1}/{props.trials.length}</span></div><SortGame trial={trial} recordAnswer={props.submitIconAnswer} /></div> : null}
+      {props.phase === 'testing' && props.gameVariant === 'reaction-tap' ? <div className="test-card reaction-test-card"><div className="test-meta"><span><TimerReset size={16} /> {props.elapsed}s</span><span>{props.trialIndex + 1}/{props.trials.length}</span></div><ReactionGame key={props.trialIndex} recordAnswer={props.submitIconAnswer} /></div> : null}
+      {props.phase === 'testing' && props.gameVariant === 'color-response' ? <div className="test-card color-response-card"><div className="test-meta"><span><TimerReset size={16} /> {props.elapsed}s</span><span>{props.trialIndex + 1}/{props.trials.length}</span></div><ColorResponseGame trial={trial} recordAnswer={props.submitIconAnswer} /></div> : null}
+      {props.phase === 'testing' && props.gameVariant === 'sequence-tap' ? <div className="test-card sequence-tap-card"><div className="test-meta"><span><TimerReset size={16} /> {props.elapsed}s</span><span>{props.trialIndex + 1}/{props.trials.length}</span></div><SequenceTapGame trial={trial} recordAnswer={props.submitIconAnswer} /></div> : null}
+      {props.phase === 'testing' && props.gameVariant === 'word-scramble' ? <div className="test-card scramble-card"><div className="test-meta"><span><TimerReset size={16} /> {props.elapsed}s</span><span>{props.trialIndex + 1}/{props.trials.length}</span></div><ScrambleGame trial={trial} submitAnswer={props.submitAnswer} currentAnswer={props.currentAnswer} setCurrentAnswer={props.setCurrentAnswer} /></div> : null}
       {props.phase === 'testing' && props.taskType === 'memory' && props.gameVariant === 'memory-category-sort' && trial.stream ? (
   <div className="test-card stream-test-card">
     <StreamWordCard trial={trial} onDone={props.submitIconAnswer} />
@@ -2222,7 +2318,7 @@ function TaskPanel(props) {
 ) : null}
       {props.phase === 'testing' && props.taskType !== 'icons' && trial.mode === 'choice' ? <div className="test-card"><div className="test-meta"><span><TimerReset size={16} /> {props.elapsed}s</span><span>{props.trialIndex + 1}/{props.trials.length}</span></div><ChoiceGame trial={trial} submitAnswer={props.submitAnswer} recordAnswer={props.submitIconAnswer} /></div> : null}
       {props.phase === 'testing' && props.taskType === 'math' && props.gameVariant === 'math-bonds' ? <div className="test-card bond-test-card"><div className="test-meta"><span><TimerReset size={16} /> {props.elapsed}s</span><span>{props.trialIndex + 1}/{props.trials.length}</span></div><BondGame trial={trial} recordAnswer={props.submitIconAnswer} /></div> : null}
-      {props.phase === 'testing' && props.taskType !== 'icons' && !(props.taskType === 'math' && ['math-sort', 'math-bonds'].includes(props.gameVariant)) && props.gameVariant !== 'memory-category-sort' && props.gameVariant !== 'memory-spatial' && trial.mode !== 'choice' ? <form className="test-card" onSubmit={props.submitAnswer}><div className="test-meta"><span><TimerReset size={16} /> {props.elapsed}s</span><span>{props.trialIndex + 1}/{props.trials.length}</span></div>{props.taskType === 'memory' ? <div className="memory-prompt"><span>{trial.intro ? 'First keyword' : 'New keyword'}</span><strong>{trial.q}</strong><p>{trial.intro ? 'Remember this keyword. On the next screen, type this previous keyword.' : 'Type the previous keyword, not the one shown above.'}</p></div> : <h3>{trial.q}</h3>}{props.taskType === 'memory' && trial.intro ? null : <input autoFocus value={props.currentAnswer} onChange={(event) => props.setCurrentAnswer(event.target.value)} placeholder={props.taskType === 'memory' ? 'Previous keyword' : 'Answer'} />}<button className="primary-action" type="submit">{props.taskType === 'memory' && trial.intro ? 'Start recall' : 'Submit'} <ChevronRight size={18} /></button></form> : null}
+      {props.phase === 'testing' && props.taskType !== 'icons' && !(props.taskType === 'math' && ['math-sort', 'math-bonds'].includes(props.gameVariant)) && !['memory-category-sort', 'memory-spatial', 'reaction-tap', 'sequence-tap', 'word-scramble'].includes(props.gameVariant) && trial.mode !== 'choice' ? <form className="test-card" onSubmit={props.submitAnswer}><div className="test-meta"><span><TimerReset size={16} /> {props.elapsed}s</span><span>{props.trialIndex + 1}/{props.trials.length}</span></div>{props.taskType === 'memory' ? <div className="memory-prompt"><span>{trial.intro ? 'First keyword' : 'New keyword'}</span><strong>{trial.q}</strong><p>{trial.intro ? 'Remember this keyword. On the next screen, type this previous keyword.' : 'Type the previous keyword, not the one shown above.'}</p></div> : <h3>{trial.q}</h3>}{props.taskType === 'memory' && trial.intro ? null : <input autoFocus value={props.currentAnswer} onChange={(event) => props.setCurrentAnswer(event.target.value)} placeholder={props.taskType === 'memory' ? 'Previous keyword' : 'Answer'} />}<button className="primary-action" type="submit">{props.taskType === 'memory' && trial.intro ? 'Start recall' : 'Submit'} <ChevronRight size={18} /></button></form> : null}
       {props.phase === 'post' ? <div className="test-card"><div className="score-orb">{props.currentScore}%</div><h3>Post-session mood</h3><p>This score includes accuracy and a time penalty. Record your current mood before saving.</p><MoodSlider label="After" value={props.postMood} onChange={props.setPostMood} /><button className="primary-action" onClick={props.saveSession}>Save result <BarChart3 size={18} /></button></div> : null}
       {props.phase === 'results' && props.latestSession ? <div className="test-card results-card"><div className="score-row"><Metric label="Score" value={`${props.latestSession.accuracy}%`} /><Metric label="Session" value={formatSeconds(props.latestSession.sessionLength)} /><Metric label="Mood" value={`${props.latestSession.postMood}/10`} /></div><h3>Session complete</h3><p>Generate a logged-in AI Insight card or share feedback below.</p><button className="secondary-action" onClick={props.startTest}><RefreshCw size={18} /> Run another test</button></div> : null}
     </div>
@@ -2231,6 +2327,34 @@ function TaskPanel(props) {
 
 function ChoiceGame({ trial, recordAnswer }) {
   return <div className="choice-game"><h3>{trial.q}</h3><p className="muted">Choose the best answer.</p><div className="choice-game-options">{trial.options.map((option) => <button key={option} type="button" onClick={() => recordAnswer(option)}>{option}</button>)}</div></div>;
+}
+
+function ReactionGame({ recordAnswer }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setReady(true), 700 + Math.floor(Math.random() * 1000));
+    return () => window.clearTimeout(timer);
+  }, []);
+  return <div className={`reaction-game ${ready ? 'ready' : ''}`}><div className="reaction-signal">{ready ? 'TAP' : 'Wait...'}</div><p>{ready ? 'Respond now.' : 'Keep your eyes on the signal.'}</p><button type="button" disabled={!ready} onClick={() => recordAnswer('tap')}>{ready ? 'Tap the signal' : 'Get ready'}</button></div>;
+}
+
+function ColorResponseGame({ trial, recordAnswer }) {
+  const colors = [{ name: 'blue', hex: '#2e6f95' }, { name: 'orange', hex: '#d97a3f' }, { name: 'green', hex: '#3f7d52' }, { name: 'purple', hex: '#7d5fa6' }];
+  return <div className="color-response-game"><h3>{trial.q}</h3><p className="muted">Match the word to its color.</p><div className="color-response-options">{colors.map((color) => <button key={color.name} type="button" style={{ '--response-color': color.hex }} onClick={() => recordAnswer(color.name)}>{color.name}</button>)}</div></div>;
+}
+
+function SequenceTapGame({ trial, recordAnswer }) {
+  const [chosen, setChosen] = useState([]);
+  function choose(value) {
+    const next = [...chosen, value];
+    setChosen(next);
+    if (next.length === trial.sequence.length) recordAnswer(next.join('') === trial.sequence.join('') ? 'correct' : 'wrong');
+  }
+  return <div className="sequence-tap-game"><h3>{trial.q}</h3><p className="muted">Tap each number once in the correct order.</p><div className="sequence-tap-options">{['1', '2', '3', '4'].map((value) => <button key={value} type="button" disabled={chosen.includes(value)} onClick={() => choose(value)}>{value}</button>)}</div></div>;
+}
+
+function ScrambleGame({ trial, submitAnswer, currentAnswer, setCurrentAnswer }) {
+  return <form className="scramble-game" onSubmit={submitAnswer}><h3>{trial.q}</h3><p className="muted">Type the word you discover.</p><input autoFocus value={currentAnswer} onChange={(event) => setCurrentAnswer(event.target.value)} placeholder="Your answer" /><button className="primary-action" type="submit">Check answer <ChevronRight size={18} /></button></form>;
 }
 
 function SortGame({ trial, recordAnswer }) {
@@ -2536,7 +2660,7 @@ function SpatialRecallGame({ trial, recordAnswer }) {
 
 function EmptyTask({ selectedProfile, selectedSong, taskType, gameVariant, startTest }) {
   const selectedGame = taskGames[taskType]?.find((game) => game.id === gameVariant) || taskGames[taskType]?.[0];
-  return <div className="test-card empty-task"><div className="score-orb small"><Headphones size={28} /></div><h3>{selectedGame?.name || (selectedProfile.id === 'itunes' && selectedSong ? selectedSong.trackName : selectedProfile.name)} ready</h3><div className="how-to-play"><strong>How the test works</strong><span>1. Choose your sound and game.</span><span>2. {selectedGame?.prompt}</span><span>3. Work quickly, because score decreases when average answer time is too slow.</span><span>4. Record mood after the session for the AI summary.</span></div><button className="primary-action" onClick={startTest}><Play size={18} /> Begin trial</button></div>;
+  return <div className="test-card empty-task"><div className="score-orb small"><Headphones size={28} /></div><h3>{selectedGame?.name || (selectedProfile.id === 'jamendo' && selectedSong ? selectedSong.trackName : selectedProfile.name)} is ready</h3><p className="gentle-task-copy">You can stop after this short session and simply notice how it felt. Your score is feedback, not a judgement.</p><div className="how-to-play"><strong>What will happen</strong><span>1. Your chosen sound will play while you focus.</span><span>2. {selectedGame?.prompt}</span><span>3. Answer one prompt at a time; speed is only one part of the score.</span><span>4. Record your mood afterward if you would like to see the full reflection.</span></div><button className="primary-action" onClick={startTest}><Play size={18} /> Begin when ready</button></div>;
 }
 
 function InsightAndFeedback(props) {
@@ -2596,7 +2720,7 @@ function InsightAndFeedback(props) {
               <article key={song.trackId}>
                 <img src={song.artworkUrl100} alt="" />
                 <div><span>{song.trackName}</span><small>{song.artistName}</small></div>
-                <button onClick={() => { props.setSelectedSong(song); props.setProfileId('itunes'); props.setAudioOn(true); }}><Play size={15} /> Play</button>
+                <button onClick={() => { props.setSelectedSong(song); props.setProfileId('jamendo'); props.setAudioOn(true); }}><Play size={15} /> Play</button>
               </article>
             ))}
           </div>
@@ -2698,7 +2822,7 @@ function FeedbackPage({ navigate }) {
       </div>
       <div className="feedback-explainer">
         <div className="feedback-explainer-icon"><Sparkles size={24} /></div>
-        <div><strong>How your feedback helps</strong><p>Groq considers your words, score, mood, task, and previous sound. It then creates a personal response and searches iTunes for fresh recommendations.</p></div>
+        <div><strong>How your feedback helps</strong><p>Groq considers your words, score, mood, task, and previous sound. It then creates a personal response and searches Jamendo for fresh recommendations.</p></div>
         <button className="secondary-action" onClick={() => navigate('focus')}>Share your experience <ChevronRight size={17} /></button>
       </div>
       <div className="feedback-section-heading"><div><span className="eyebrow"><Activity size={16} /> Community snapshots</span><h2>Real feelings. Useful patterns.</h2></div><p>Sample session reflections</p></div>
@@ -2735,7 +2859,7 @@ function PrivacyGateModal({ scrolled, checked, setChecked, onScrollComplete, onA
           <h3>Neurobeats Privacy Policy</h3>
           <p>Neurobeats stores your account and session details in this browser so the app can run focus tests, save session history, and personalize recommendations.</p>
           <p>We may use your name, email, role, genre and language preferences, selected audio, focus-game answers, score, session length, mood ratings, AI insight text, and written feedback.</p>
-          <p>EmailJS may receive registration or login event details when configured. Groq may receive session details and feedback to generate AI insights and recommendation text. The iTunes API receives music search terms to return song previews.</p>
+          <p>EmailJS may receive registration or login event details when configured. Groq may receive session details and feedback to generate AI insights and recommendation text. The Jamendo API receives music search terms to return independent music streams.</p>
           <p>Your session history is stored locally in your browser. You can delete saved sessions from the History page or clear browser site data to remove locally stored account/session information.</p>
           <p>If you share an insight card or session, it may include your task, score, session length, sound used, mood, and AI-generated insight. Downloaded cards are saved by you as image files.</p>
           <p>Neurobeats is an experimental focus platform. It is not medical, psychological, or academic advice, and it does not guarantee improved focus, productivity, grades, or mood.</p>
@@ -2757,7 +2881,9 @@ function Footer({ navigate }) {
     <footer className="footer">
       <div><h3>Quick Links</h3>{[['home', 'Home'], ['about', 'About'], ['focus', 'Focus Test'], ['results', 'Results'], ['history', 'History'], ['feedback', 'Feedback'], ['privacy', 'Privacy Policy'], ['terms', 'Terms and Conditions']].map(([id, label]) => <button key={id} onClick={() => navigate(id)}>{label}</button>)}</div>
       <div><h3>Contact</h3><a href="mailto:neurobeats.work@gmail.com">neurobeats.work@gmail.com</a><p>India</p></div>
+      {/* Temporarily hidden social links. Restore this block when the links are ready.
       <div><h3>Social Links</h3><a href="https://github.com/samarthuniadmissions-bot/Neurobeats" target="_blank" rel="noreferrer"><Share2 size={16} /> GitHub</a><a href="https://www.linkedin.com" target="_blank" rel="noreferrer"><Share2 size={16} /> LinkedIn</a><a href="https://twitter.com" target="_blank" rel="noreferrer"><Share2 size={16} /> Twitter</a><a href="https://www.instagram.com" target="_blank" rel="noreferrer"><Share2 size={16} /> Instagram</a></div>
+      */}
       <p className="copyright">© 2026 Neurobeats. All Rights Reserved.</p>
     </footer>
   );
@@ -2772,8 +2898,8 @@ function MoodSlider({ label, value, onChange }) {
 }
 
 function FocusSignal({ profile, audioOn, song }) {
-  const frequencyLabel = profile.id === 'itunes' ? 'Dynamic preview spectrum' : profile.id === 'alpha' ? '10 Hz alpha rhythm' : profile.id === 'lofi' ? '72 BPM low-mid pulse' : profile.id === 'brown-noise' ? 'Low-frequency noise curve' : 'Silent baseline';
-  return <div className={`focus-signal signal-${profile.id}`} style={{ '--profile-color': profile.color }}><div className="signal-header"><span>{profile.id === 'itunes' && song ? song.trackName : profile.name}</span><strong>{audioOn ? 'Live' : 'Ready'}</strong></div><div className={`frequency-stage ${audioOn ? 'playing' : ''}`}><div className="frequency-grid" /><div className="frequency-line">{Array.from({ length: 72 }).map((_, index) => <span key={index} style={{ '--i': index }} />)}</div><div className="spectrum-bars">{Array.from({ length: 34 }).map((_, index) => <span key={index} style={{ '--i': index }} />)}</div><span className="frequency-label">{frequencyLabel}</span></div><div className="signal-footer"><span>{profile.id === 'itunes' && song ? song.artistName : profile.label}</span><span>{profile.tempo}</span></div></div>;
+  const frequencyLabel = profile.id === 'jamendo' ? 'Dynamic full-track spectrum' : profile.id === 'alpha' ? '10 Hz alpha rhythm' : profile.id === 'lofi' ? '72 BPM low-mid pulse' : profile.id === 'brown-noise' ? 'Low-frequency noise curve' : 'Silent baseline';
+  return <div className={`focus-signal signal-${profile.id}`} style={{ '--profile-color': profile.color }}><div className="signal-header"><span>{profile.id === 'jamendo' && song ? song.trackName : profile.name}</span><strong>{audioOn ? 'Live' : 'Ready'}</strong></div><div className={`frequency-stage ${audioOn ? 'playing' : ''}`}><div className="frequency-grid" /><div className="frequency-line">{Array.from({ length: 72 }).map((_, index) => <span key={index} style={{ '--i': index }} />)}</div><div className="spectrum-bars">{Array.from({ length: 34 }).map((_, index) => <span key={index} style={{ '--i': index }} />)}</div><span className="frequency-label">{frequencyLabel}</span></div><div className="signal-footer"><span>{profile.id === 'jamendo' && song ? song.artistName : profile.label}</span><span>{profile.tempo}</span></div></div>;
 }
 
 function Metric({ label, value }) {
