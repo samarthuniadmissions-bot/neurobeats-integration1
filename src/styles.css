@@ -5640,3 +5640,12 @@ html { font-size: 17px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Center the How It Works title against the complete outer panel. */
+.big-steps > h2 {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  text-align: center !important;
+}
