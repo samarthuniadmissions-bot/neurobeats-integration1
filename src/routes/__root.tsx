@@ -81,6 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Test your focus sound with Neurobeats." },
       { name: "author", content: "Neurobeats" },
       { name: "robots", content: "index, follow" },
+      { name: "google-site-verification", content: "8ygzzhN68PeC8ftUR0lb26wTL7g_3jA-iErhXe3VC2E" },
       { property: "og:title", content: "Neurobeats" },
       { property: "og:description", content: "Test your focus sound with Neurobeats." },
       { property: "og:type", content: "website" },
