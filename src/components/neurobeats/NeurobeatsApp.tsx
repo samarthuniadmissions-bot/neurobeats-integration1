@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import emailjs from '@emailjs/browser';
 import html2canvas from 'html2canvas';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, browserLocalPersistence, setPersistence, signInWithPopup } from 'firebase/auth';
 import { firebaseAuth, firebaseConfigured } from '../../lib/firebase';
 import {
   Activity,
@@ -818,6 +818,13 @@ async function sendAdminAuthEmail({ type, name, email }) {
   }, EMAILJS_PUBLIC_KEY);
 }
 
+function rememberAccount({ email, name }) {
+  if (!email) return;
+  // Keep only a safe login hint so returning users can start quickly; never store passwords here.
+  localStorage.setItem(LAST_EMAIL_KEY, JSON.stringify(email));
+  localStorage.setItem('neurobeats-remembered-account', JSON.stringify({ email, name: name || email.split('@')[0] }));
+}
+
 function App() {
   const [page, setPage] = useState('home');
   const [authMode, setAuthMode] = useState('login');
@@ -1047,7 +1054,6 @@ useEffect(() => {
     const confirmPassword = String(form.get('confirmPassword') || '');
     const acceptedLegal = form.get('acceptedLegal') === 'on';
     const users = loadJSON(USERS_KEY, []);
-    localStorage.setItem(LAST_EMAIL_KEY, JSON.stringify(email));
     if (!privacyAccepted) {
       setAuthMessage('Please read and agree to the Privacy Policy popup before continuing.');
       return;
@@ -1075,6 +1081,7 @@ useEffect(() => {
       }
       const nextUsers = [...users, { email, name, password }];
       localStorage.setItem(USERS_KEY, JSON.stringify(nextUsers));
+      rememberAccount({ email, name });
       await sendAuthEmail({ type: 'registration', name, email });
       await sendAdminAuthEmail({ type: 'registration', name, email });
       setUser({ email, name });
@@ -1093,6 +1100,7 @@ useEffect(() => {
     }
     await sendAuthEmail({ type: 'login', name: found.name, email });
     await sendAdminAuthEmail({ type: 'login', name: found.name, email });
+    rememberAccount({ email: found.email, name: found.name });
     setUser({ email: found.email, name: found.name });
     setAuthMessage('Logged in successfully.');
     navigate('focus');
@@ -1104,9 +1112,10 @@ useEffect(() => {
       return;
     }
     try {
+      await setPersistence(firebaseAuth, browserLocalPersistence);
       const result = await signInWithPopup(firebaseAuth, new GoogleAuthProvider());
       const signedInUser = { email: result.user.email || '', name: result.user.displayName || result.user.email?.split('@')[0] || 'Neurobeats user' };
-      localStorage.setItem(LAST_EMAIL_KEY, JSON.stringify(signedInUser.email));
+      rememberAccount(signedInUser);
       setUser(signedInUser);
       setAuthMessage('Logged in successfully with Google.');
       navigate('focus');
