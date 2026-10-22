@@ -2359,6 +2359,24 @@ textarea {
 .history-page {
   align-content: start;
 }
+.history-page .section-heading {
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 26px;
+}
+.history-page .section-heading > div {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.history-page .section-heading h1 {
+  font-size: clamp(3.2rem, 7vw, 6.4rem);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+.history-page .section-heading p {
+  max-width: 720px;
+}
 .history-actions,
 .history-row-actions {
   display: flex;
