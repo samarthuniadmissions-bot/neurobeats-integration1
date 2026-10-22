@@ -2377,6 +2377,163 @@ textarea {
 .history-page .section-heading p {
   max-width: 720px;
 }
+
+/* Immersive music field: keeps the warm Neurobeats palette while adding depth. */
+body::after {
+  display: block;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.72;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(45, 140, 127, 0.18) 0 1px, transparent 2px),
+    radial-gradient(circle at 18% 72%, rgba(196, 159, 63, 0.2) 0 1px, transparent 2px),
+    repeating-radial-gradient(ellipse at 78% 26%, transparent 0 42px, rgba(45, 140, 127, 0.1) 43px 44px, transparent 45px 88px),
+    linear-gradient(115deg, transparent 0 35%, rgba(255, 250, 240, 0.34) 48%, transparent 62%);
+  background-size: 280px 280px, 360px 360px, 100% 100%, 180% 100%;
+  mix-blend-mode: multiply;
+  animation: soundFieldDrift 24s ease-in-out infinite alternate;
+}
+
+@keyframes soundFieldDrift {
+  0% { transform: translate3d(-1%, -1%, 0) scale(1); background-position: 0 0, 0 0, 0 0, 0 0; }
+  100% { transform: translate3d(1%, 1%, 0) scale(1.04); background-position: 40px -30px, -30px 35px, 0 0, 100px 0; }
+}
+
+.site-shell {
+  perspective: 1400px;
+}
+
+.top-nav {
+  box-shadow: 0 18px 45px rgba(23, 32, 29, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transition: transform 260ms ease, box-shadow 260ms ease, border-color 260ms ease;
+}
+
+.top-nav:hover {
+  transform: translateY(-2px) rotateX(1deg);
+  box-shadow: 0 24px 56px rgba(23, 32, 29, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.landing-panel,
+.testimonial,
+.panel,
+.sound-panel,
+.task-panel,
+.history-band,
+.insight-wrap,
+.feedback-panel,
+.contact-card,
+.auth-card,
+.info-grid article,
+.home-section article,
+.owner-card,
+.policy-grid article,
+.feature-detail-card,
+.step-grid article,
+.home-card-grid article {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(23, 32, 29, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  transform: translateZ(0);
+  transition: transform 280ms cubic-bezier(.2,.8,.2,1), box-shadow 280ms ease, border-color 280ms ease;
+}
+
+.landing-panel::before,
+.panel::before,
+.sound-panel::before,
+.task-panel::before,
+.feature-detail-card::before,
+.step-grid article::before,
+.home-card-grid article::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background: linear-gradient(120deg, rgba(255,255,255,0.34), transparent 32%, transparent 68%, rgba(45,140,127,0.07));
+}
+
+.landing-panel:hover,
+.testimonial:hover,
+.panel:hover,
+.sound-panel:hover,
+.task-panel:hover,
+.history-band:hover,
+.insight-wrap:hover,
+.feedback-panel:hover,
+.contact-card:hover,
+.auth-card:hover,
+.info-grid article:hover,
+.home-section article:hover,
+.owner-card:hover,
+.policy-grid article:hover,
+.feature-detail-card:hover,
+.step-grid article:hover,
+.home-card-grid article:hover {
+  transform: translateY(-7px) rotateX(1deg) rotateY(-0.6deg);
+  border-color: rgba(45, 140, 127, 0.34);
+  box-shadow: 0 30px 64px rgba(23, 32, 29, 0.15), 0 0 0 1px rgba(45, 140, 127, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.landing-panel > *,
+.panel > *,
+.sound-panel > *,
+.task-panel > *,
+.feature-detail-card > *,
+.step-grid article > *,
+.home-card-grid article > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-actions button,
+.primary-action,
+.secondary-action,
+.google-action,
+.profile-card,
+.music-option,
+.task-card,
+.role-row button,
+.genre-row button {
+  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease;
+}
+
+.hero-actions button:hover,
+.primary-action:hover,
+.secondary-action:hover,
+.google-action:hover,
+.profile-card:hover,
+.music-option:hover,
+.task-card:hover,
+.role-row button:hover,
+.genre-row button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(23, 32, 29, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after,
+  .top-nav,
+  .landing-panel,
+  .testimonial,
+  .panel,
+  .sound-panel,
+  .task-panel,
+  .history-band,
+  .insight-wrap,
+  .feedback-panel,
+  .contact-card,
+  .auth-card,
+  .info-grid article,
+  .home-section article,
+  .owner-card,
+  .policy-grid article,
+  .feature-detail-card,
+  .step-grid article,
+  .home-card-grid article {
+    animation: none;
+    transition: none;
+  }
+}
 .history-actions,
 .history-row-actions {
   display: flex;

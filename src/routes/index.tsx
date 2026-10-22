@@ -9,6 +9,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Neurobeats — Test your focus sound" },
       { property: "og:description", content: "Neurobeats combines music discovery, timed cognitive tasks, mood tracking, and AI feedback to help you understand which sound supports your best work." },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://neurobeats-integration1.vercel.app/" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),

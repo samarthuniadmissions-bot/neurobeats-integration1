@@ -80,9 +80,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Neurobeats" },
       { name: "description", content: "Test your focus sound with Neurobeats." },
       { name: "author", content: "Neurobeats" },
+      { name: "robots", content: "index, follow" },
       { property: "og:title", content: "Neurobeats" },
       { property: "og:description", content: "Test your focus sound with Neurobeats." },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://neurobeats-integration1.vercel.app/" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
@@ -91,6 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/neurobeats-favicon.svg", type: "image/svg+xml" },
+      { rel: "canonical", href: "https://neurobeats-integration1.vercel.app/" },
       {
         rel: "preconnect",
         href: "https://fonts.googleapis.com",
